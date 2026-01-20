@@ -8,6 +8,7 @@ import {
   deleteMenuItem,
   getMenu,
   updateMenuItem,
+  updateRestaurantTheme,
 } from "../api/adminApi";
 
 const THEMES = [
@@ -33,6 +34,20 @@ function getThemeForSlug(slug) {
 function saveThemeForSlug(slug, theme) {
   if (!slug) return;
   localStorage.setItem(`menuart_theme_${slug}`, JSON.stringify(theme));
+}
+
+function themeFromApi(data) {
+  if (!data?.themePrimary || !data?.themeSecondary) return null;
+  const byName = THEMES.find(
+    (t) => t.name.toLowerCase() === String(data.themeName || "").toLowerCase()
+  );
+  if (byName) return byName;
+  return {
+    id: "custom",
+    name: data.themeName || "Custom",
+    primary: data.themePrimary,
+    secondary: data.themeSecondary,
+  };
 }
 
 export default function AdminDashboard() {
@@ -90,10 +105,26 @@ export default function AdminDashboard() {
     try {
       const data = await getMenu(slug);
       setItems(data.items || []);
+      const apiTheme = themeFromApi(data);
+      if (apiTheme) {
+        setTheme(apiTheme);
+        saveThemeForSlug(slug, apiTheme);
+      }
     } catch {
       setItems([]);
     } finally {
       setLoadingMenu(false);
+    }
+  };
+
+  const persistTheme = async (slug, nextTheme, message) => {
+    setTheme(nextTheme);
+    saveThemeForSlug(slug, nextTheme);
+    try {
+      await updateRestaurantTheme(slug, nextTheme);
+      if (message) setStatus(message);
+    } catch (err) {
+      setStatus(`❌ ${err.message}`);
     }
   };
 
@@ -394,10 +425,12 @@ export default function AdminDashboard() {
                               ? "rgba(255,255,255,0.6)"
                               : "rgba(255,255,255,0.15)",
                         }}
-                        onClick={() => {
-                          setTheme(t);
-                          saveThemeForSlug(activeSlug, t);
-                          setStatus(`✅ Theme set to ${t.name}.`);
+                        onClick={async () => {
+                          await persistTheme(
+                            activeSlug,
+                            t,
+                            `✅ Theme set to ${t.name}.`
+                          );
                         }}
                         title={`${t.name} theme`}
                       >
@@ -424,8 +457,7 @@ export default function AdminDashboard() {
                             primary: e.target.value,
                             secondary: theme?.secondary || "#d97706",
                           };
-                          setTheme(updated);
-                          saveThemeForSlug(activeSlug, updated);
+                          persistTheme(activeSlug, updated);
                         }}
                         style={styles.colorInput}
                       />
@@ -442,8 +474,7 @@ export default function AdminDashboard() {
                             primary: theme?.primary || "#f59e0b",
                             secondary: e.target.value,
                           };
-                          setTheme(updated);
-                          saveThemeForSlug(activeSlug, updated);
+                          persistTheme(activeSlug, updated);
                         }}
                         style={styles.colorInput}
                       />
@@ -460,8 +491,7 @@ export default function AdminDashboard() {
                           primary: e.target.value,
                           secondary: theme?.secondary || "#d97706",
                         };
-                        setTheme(updated);
-                        saveThemeForSlug(activeSlug, updated);
+                        persistTheme(activeSlug, updated);
                       }}
                       placeholder="#f59e0b"
                       style={styles.input}
@@ -476,8 +506,7 @@ export default function AdminDashboard() {
                           primary: theme?.primary || "#f59e0b",
                           secondary: e.target.value,
                         };
-                        setTheme(updated);
-                        saveThemeForSlug(activeSlug, updated);
+                        persistTheme(activeSlug, updated);
                       }}
                       placeholder="#d97706"
                       style={styles.input}

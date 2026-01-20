@@ -1,17 +1,23 @@
 import os, uuid
 from typing import Optional
 
-from app.schemas.restaurants import RestaurantCreate
+from app.schemas.restaurants import RestaurantCreate, RestaurantThemeUpdate
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
+from app.core.deps import require_admin
 from app.models.menu import Restaurant, Category, Subcategory, MenuItem
 from app.schemas.menu import MenuResponse, MenuItemOut
 from app.core.config import MEDIA_DIR, BASE_URL
 
 router = APIRouter(prefix="/api", tags=["menu"])
 
+DEFAULT_THEME = {
+    "name": "Classic",
+    "primary": "#f59e0b",
+    "secondary": "#d97706",
+}
 
 def ensure_dir(path: str):
     os.makedirs(path, exist_ok=True)
@@ -26,6 +32,13 @@ def normalize_url(url: str | None) -> str | None:
     if not url:
         return url
     return url
+
+
+def theme_for_restaurant(r: Restaurant) -> tuple[str, str, str]:
+    name = r.theme_name or DEFAULT_THEME["name"]
+    primary = r.theme_primary or DEFAULT_THEME["primary"]
+    secondary = r.theme_secondary or DEFAULT_THEME["secondary"]
+    return name, primary, secondary
 
 
 def get_restaurant_or_404(slug: str, db: Session) -> Restaurant:
@@ -64,6 +77,7 @@ def create_restaurant(payload: RestaurantCreate, db: Session = Depends(get_db)):
 @router.get("/restaurants/{slug}/menu", response_model=MenuResponse)
 def get_menu(slug: str, db: Session = Depends(get_db)):
     r = get_restaurant_or_404(slug, db)
+    theme_name, theme_primary, theme_secondary = theme_for_restaurant(r)
 
     items = (
         db.query(MenuItem)
@@ -86,7 +100,33 @@ def get_menu(slug: str, db: Session = Depends(get_db)):
             isAvailable=it.is_available
         ))
 
-    return MenuResponse(restaurantSlug=slug, items=out)
+    return MenuResponse(
+        restaurantSlug=slug,
+        items=out,
+        themeName=theme_name,
+        themePrimary=theme_primary,
+        themeSecondary=theme_secondary,
+    )
+
+
+@router.put("/restaurants/{slug}/theme")
+def update_theme(
+    slug: str,
+    payload: RestaurantThemeUpdate,
+    db: Session = Depends(get_db),
+    _: str = Depends(require_admin),
+):
+    r = get_restaurant_or_404(slug, db)
+    r.theme_name = payload.name.strip() if payload.name else DEFAULT_THEME["name"]
+    r.theme_primary = payload.primary.strip() if payload.primary else DEFAULT_THEME["primary"]
+    r.theme_secondary = payload.secondary.strip() if payload.secondary else DEFAULT_THEME["secondary"]
+    db.add(r)
+    db.commit()
+    return {
+        "themeName": r.theme_name,
+        "themePrimary": r.theme_primary,
+        "themeSecondary": r.theme_secondary,
+    }
 
 
 @router.post("/restaurants/{slug}/items")

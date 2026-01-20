@@ -50,6 +50,24 @@ export async function getMenu(slug) {
   return res.json();
 }
 
+export async function updateRestaurantTheme(slug, theme) {
+  const res = await fetch(`${API_BASE}/restaurants/${slug}/theme`, {
+    method: "PUT",
+    headers: authHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({
+      name: theme?.name || "Classic",
+      primary: theme?.primary || "#f59e0b",
+      secondary: theme?.secondary || "#d97706",
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Failed to update theme");
+  }
+  return res.json();
+}
+
 export async function updateMenuItem(slug, itemId, formData) {
   const res = await fetch(`${API_BASE}/restaurants/${slug}/items/${itemId}`, {
     method: "PUT",

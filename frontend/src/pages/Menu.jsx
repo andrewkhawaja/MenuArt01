@@ -25,6 +25,25 @@ function getThemeForSlug(slug) {
   }
 }
 
+function themeFromApi(data) {
+  if (!data?.themePrimary || !data?.themeSecondary) return null;
+  const byName = THEMES.find(
+    (t) => t.name.toLowerCase() === String(data.themeName || "").toLowerCase()
+  );
+  if (byName) return byName;
+  return {
+    id: "custom",
+    name: data.themeName || "Custom",
+    primary: data.themePrimary,
+    secondary: data.themeSecondary,
+  };
+}
+
+function saveThemeForSlug(slug, theme) {
+  if (!slug || !theme) return;
+  localStorage.setItem(`menuart_theme_${slug}`, JSON.stringify(theme));
+}
+
 export default function Menu() {
   const { slug } = useParams();
 
@@ -71,7 +90,14 @@ export default function Menu() {
         const res = await fetch(`${API_BASE}/restaurants/${safeSlug}/menu`);
         if (!res.ok) throw new Error("Menu not found");
         const data = await res.json();
-        if (!ignore) setItems(data.items || []);
+        if (!ignore) {
+          setItems(data.items || []);
+          const apiTheme = themeFromApi(data);
+          if (apiTheme) {
+            setTheme(apiTheme);
+            saveThemeForSlug(slug, apiTheme);
+          }
+        }
       } catch {
         if (!ignore) {
           setItems([]);

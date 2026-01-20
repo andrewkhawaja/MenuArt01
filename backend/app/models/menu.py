@@ -11,6 +11,9 @@ class Restaurant(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120))
     slug: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    theme_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    theme_primary: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    theme_secondary: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_at: Mapped[str] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     categories = relationship("Category", back_populates="restaurant", cascade="all, delete-orphan")
