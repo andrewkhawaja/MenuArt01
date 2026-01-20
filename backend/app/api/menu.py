@@ -31,6 +31,10 @@ def file_url(rel_path: str) -> str:
 def normalize_url(url: str | None) -> str | None:
     if not url:
         return url
+    if url.startswith("http://localhost:8000"):
+        return url.replace("http://localhost:8000", BASE_URL)
+    if url.startswith("http://127.0.0.1:8000"):
+        return url.replace("http://127.0.0.1:8000", BASE_URL)
     return url
 
 
