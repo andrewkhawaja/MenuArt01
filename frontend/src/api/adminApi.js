@@ -1,4 +1,5 @@
-const API_BASE = "http://127.0.0.1:8000/api";
+const API_BASE =
+  import.meta.env.VITE_API_BASE || "https://menuart.onrender.com/api";
 
 function authHeaders(extra = {}) {
   const token = localStorage.getItem("menuart_token");
@@ -44,6 +45,35 @@ export async function getMenu(slug) {
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || "Failed to fetch menu");
+  }
+
+  return res.json();
+}
+
+export async function updateMenuItem(slug, itemId, formData) {
+  const res = await fetch(`${API_BASE}/restaurants/${slug}/items/${itemId}`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Failed to update item");
+  }
+
+  return res.json();
+}
+
+export async function deleteMenuItem(slug, itemId) {
+  const res = await fetch(`${API_BASE}/restaurants/${slug}/items/${itemId}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Failed to delete item");
   }
 
   return res.json();

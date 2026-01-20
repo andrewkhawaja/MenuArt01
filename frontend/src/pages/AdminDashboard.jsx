@@ -2,7 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { QRCodeCanvas } from "qrcode.react";
 import DishCard from "../components/DishCard";
-import { createMenuItem, createRestaurant, getMenu } from "../api/adminApi";
+import {
+  createMenuItem,
+  createRestaurant,
+  deleteMenuItem,
+  getMenu,
+  updateMenuItem,
+} from "../api/adminApi";
 
 const THEMES = [
   { id: "classic", name: "Classic", primary: "#f59e0b", secondary: "#d97706" },
@@ -59,17 +65,10 @@ export default function AdminDashboard() {
   const [theme, setTheme] = useState(THEMES[0]);
 
   // -------------------------
-  // API base (frontend env)
-  // -------------------------
-  const API_BASE = import.meta.env.VITE_API_BASE; // should be like: https://your-render.onrender.com/api
-
-  // -------------------------
   // QR Base (customer menu)
   // -------------------------
   // ✅ For deployment (Vercel):
   const QR_BASE = "https://menu-art01.vercel.app";
-  // ✅ For local dev:
-  // const QR_BASE = "http://localhost:5173";
 
   const customerUrl = useMemo(() => {
     if (!activeSlug) return "";
@@ -101,50 +100,6 @@ export default function AdminDashboard() {
   const logout = () => {
     localStorage.removeItem("menuart_token");
     nav("/admin/login");
-  };
-
-  // -------------------------
-  // DELETE item (internal fetch)
-  // -------------------------
-  const deleteMenuItem = async (id) => {
-    const token = localStorage.getItem("menuart_token");
-    const res = await fetch(`${API_BASE}/items/${id}`, {
-      method: "DELETE",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (!res.ok) {
-      let msg = "Failed to delete item";
-      try {
-        const j = await res.json();
-        msg = j.detail || msg;
-      } catch {
-        // ignore parsing errors
-      }
-      throw new Error(msg);
-    }
-  };
-
-  // -------------------------
-  // UPDATE item (FormData)
-  // -------------------------
-  const updateMenuItem = async (id, formData) => {
-    const token = localStorage.getItem("menuart_token");
-    const res = await fetch(`${API_BASE}/items/${id}`, {
-      method: "PUT", // if your backend uses PATCH, change to "PATCH"
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: formData,
-    });
-    if (!res.ok) {
-      let msg = "Failed to update item";
-      try {
-        const j = await res.json();
-        msg = j.detail || msg;
-      } catch {
-        // ignore parsing errors
-      }
-      throw new Error(msg);
-    }
-    return await res.json();
   };
 
   // -------------------------
@@ -229,12 +184,13 @@ export default function AdminDashboard() {
   // -------------------------
   const handleDelete = async (it) => {
     if (!it?.id) return;
+    if (!activeSlug) return;
     const ok = window.confirm(`Delete "${it.name}" permanently?`);
     if (!ok) return;
 
     try {
       setStatus("Deleting item...");
-      await deleteMenuItem(it.id);
+      await deleteMenuItem(activeSlug, it.id);
       setItems((prev) => prev.filter((x) => x.id !== it.id));
       setStatus("✅ Item deleted.");
     } catch (err) {
@@ -247,6 +203,7 @@ export default function AdminDashboard() {
   // -------------------------
   const handleSaveEdit = async (payload) => {
     // payload: { id, name, description, price, category, subcategory, imageFile?, modelFile? }
+    if (!activeSlug) return;
     try {
       setStatus("Saving changes...");
       const fd = new FormData();
@@ -258,7 +215,7 @@ export default function AdminDashboard() {
       if (payload.imageFile) fd.append("image", payload.imageFile);
       if (payload.modelFile) fd.append("model", payload.modelFile);
 
-      const updated = await updateMenuItem(payload.id, fd);
+      const updated = await updateMenuItem(activeSlug, payload.id, fd);
 
       // update UI (try both updated.item or updated direct)
       const updatedItem = updated?.item || updated;

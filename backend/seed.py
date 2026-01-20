@@ -1,10 +1,24 @@
+import os
 from sqlalchemy.orm import Session
 from app.core.db import SessionLocal
+from app.core.security import hash_password
+from app.models.admin import Admin
 from app.models.menu import Restaurant, Category, Subcategory, MenuItem
 
 def run():
     db: Session = SessionLocal()
     try:
+        admin_email = os.getenv("ADMIN_EMAIL", "").strip().lower()
+        admin_password = os.getenv("ADMIN_PASSWORD", "").strip()
+        if admin_email and admin_password:
+            admin = db.query(Admin).filter(Admin.email == admin_email).first()
+            if not admin:
+                admin = Admin(
+                    email=admin_email,
+                    hashed_password=hash_password(admin_password),
+                )
+                db.add(admin)
+
         slug = "demo"
         r = db.query(Restaurant).filter(Restaurant.slug == slug).first()
         if not r:
@@ -35,7 +49,7 @@ def run():
                 price=12.99,
                 currency="USD",
                 image_url="https://source.unsplash.com/800x600/?pasta",
-                model_url="http://localhost:5173/models/Pasta.glb",  # later replace with backend /media url
+                model_url="https://menu-art01.vercel.app/models/Pasta.glb",
                 is_available=True
             )
             db.add(item)

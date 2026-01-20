@@ -25,11 +25,25 @@ def file_url(rel_path: str) -> str:
 def normalize_url(url: str | None) -> str | None:
     if not url:
         return url
-    if url.startswith("http://localhost:8000"):
-        return url.replace("http://localhost:8000", BASE_URL)
-    if url.startswith("http://127.0.0.1:8000"):
-        return url.replace("http://127.0.0.1:8000", BASE_URL)
     return url
+
+
+def get_restaurant_or_404(slug: str, db: Session) -> Restaurant:
+    r = db.query(Restaurant).filter(Restaurant.slug == slug).first()
+    if not r:
+        raise HTTPException(404, "Restaurant not found")
+    return r
+
+
+def get_item_for_restaurant_or_404(item_id: int, r: Restaurant, db: Session) -> MenuItem:
+    item = (
+        db.query(MenuItem)
+        .filter(MenuItem.id == item_id, MenuItem.restaurant_id == r.id)
+        .first()
+    )
+    if not item:
+        raise HTTPException(404, "Item not found in restaurant")
+    return item
 
 
 @router.post("/restaurants")
@@ -49,9 +63,7 @@ def create_restaurant(payload: RestaurantCreate, db: Session = Depends(get_db)):
 
 @router.get("/restaurants/{slug}/menu", response_model=MenuResponse)
 def get_menu(slug: str, db: Session = Depends(get_db)):
-    r = db.query(Restaurant).filter(Restaurant.slug == slug).first()
-    if not r:
-        raise HTTPException(404, "Restaurant not found")
+    r = get_restaurant_or_404(slug, db)
 
     items = (
         db.query(MenuItem)
@@ -89,9 +101,7 @@ def create_item(
     model: UploadFile | None = File(None),
     db: Session = Depends(get_db),
 ):
-    r = db.query(Restaurant).filter(Restaurant.slug == slug).first()
-    if not r:
-        raise HTTPException(404, "Restaurant not found")
+    r = get_restaurant_or_404(slug, db)
 
     cat_obj = None
     sub_obj = None
@@ -160,9 +170,9 @@ def create_item(
 # -----------------------------
 # ✅ NEW: UPDATE ITEM
 # -----------------------------
-@router.put("/items/{item_id}")
-def update_item(
-    item_id: int,
+def _update_item(
+    item: MenuItem,
+    r: Restaurant,
     name: str = Form(...),
     description: str = Form(""),
     price: float = Form(...),
@@ -172,14 +182,6 @@ def update_item(
     model: UploadFile | None = File(None),
     db: Session = Depends(get_db),
 ):
-    item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
-    if not item:
-        raise HTTPException(404, "Item not found")
-
-    r = db.query(Restaurant).filter(Restaurant.id == item.restaurant_id).first()
-    if not r:
-        raise HTTPException(404, "Restaurant not found")
-
     slug = r.slug
 
     # Category/Subcategory (optional)
@@ -254,6 +256,75 @@ def update_item(
 
 
 # -----------------------------
+# ✅ UPDATE ITEM (global)
+# -----------------------------
+@router.put("/items/{item_id}")
+def update_item(
+    item_id: int,
+    name: str = Form(...),
+    description: str = Form(""),
+    price: float = Form(...),
+    category: str = Form(""),
+    subcategory: str = Form(""),
+    image: UploadFile | None = File(None),
+    model: UploadFile | None = File(None),
+    db: Session = Depends(get_db),
+):
+    item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
+    if not item:
+        raise HTTPException(404, "Item not found")
+
+    r = db.query(Restaurant).filter(Restaurant.id == item.restaurant_id).first()
+    if not r:
+        raise HTTPException(404, "Restaurant not found")
+
+    return _update_item(
+        item=item,
+        r=r,
+        name=name,
+        description=description,
+        price=price,
+        category=category,
+        subcategory=subcategory,
+        image=image,
+        model=model,
+        db=db,
+    )
+
+
+# -----------------------------
+# ✅ UPDATE ITEM (restaurant-scoped)
+# -----------------------------
+@router.put("/restaurants/{slug}/items/{item_id}")
+def update_item_scoped(
+    slug: str,
+    item_id: int,
+    name: str = Form(...),
+    description: str = Form(""),
+    price: float = Form(...),
+    category: str = Form(""),
+    subcategory: str = Form(""),
+    image: UploadFile | None = File(None),
+    model: UploadFile | None = File(None),
+    db: Session = Depends(get_db),
+):
+    r = get_restaurant_or_404(slug, db)
+    item = get_item_for_restaurant_or_404(item_id, r, db)
+    return _update_item(
+        item=item,
+        r=r,
+        name=name,
+        description=description,
+        price=price,
+        category=category,
+        subcategory=subcategory,
+        image=image,
+        model=model,
+        db=db,
+    )
+
+
+# -----------------------------
 # ✅ Legacy: UPDATE ITEM (compat)
 # -----------------------------
 @router.put("/menu/{item_id}")
@@ -290,6 +361,18 @@ def delete_item(item_id: int, db: Session = Depends(get_db)):
     if not item:
         raise HTTPException(404, "Item not found")
 
+    db.delete(item)
+    db.commit()
+    return {"ok": True}
+
+
+# -----------------------------
+# ✅ DELETE ITEM (restaurant-scoped)
+# -----------------------------
+@router.delete("/restaurants/{slug}/items/{item_id}")
+def delete_item_scoped(slug: str, item_id: int, db: Session = Depends(get_db)):
+    r = get_restaurant_or_404(slug, db)
+    item = get_item_for_restaurant_or_404(item_id, r, db)
     db.delete(item)
     db.commit()
     return {"ok": True}

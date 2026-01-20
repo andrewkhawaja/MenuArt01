@@ -16,10 +16,7 @@ app = FastAPI(title="MenuARt API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://menu-art01.vercel.app",
-        "https://menu-art01.vercel.app/",
-    ],
+    allow_origins=[o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import DishCard from "../components/DishCard";
 import { getRecommendations } from "../api/recommendApi";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://menuart.onrender.com/api";
 
 const THEMES = [
   { id: "classic", name: "Classic", primary: "#f59e0b", secondary: "#d97706" },

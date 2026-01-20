@@ -1,4 +1,5 @@
-const API_BASE = "http://127.0.0.1:8000/api";
+const API_BASE =
+  import.meta.env.VITE_API_BASE || "https://menuart.onrender.com/api";
 
 export async function getRecommendations(slug, prefs) {
   const safeSlug = encodeURIComponent(slug);

@@ -1,4 +1,4 @@
-const API = import.meta.env.VITE_API_BASE;
+const API = import.meta.env.VITE_API_BASE || "https://menuart.onrender.com/api";
 
 export async function getMenuItems(slug) {
   const res = await fetch(`${API}/restaurants/${slug}/menu`);
