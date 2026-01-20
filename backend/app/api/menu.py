@@ -22,6 +22,16 @@ def file_url(rel_path: str) -> str:
     return f"{BASE_URL}/media/{rel_path.replace(os.sep, '/')}"
 
 
+def normalize_url(url: str | None) -> str | None:
+    if not url:
+        return url
+    if url.startswith("http://localhost:8000"):
+        return url.replace("http://localhost:8000", BASE_URL)
+    if url.startswith("http://127.0.0.1:8000"):
+        return url.replace("http://127.0.0.1:8000", BASE_URL)
+    return url
+
+
 @router.post("/restaurants")
 def create_restaurant(payload: RestaurantCreate, db: Session = Depends(get_db)):
     slug = payload.slug.strip().lower()
@@ -59,8 +69,8 @@ def get_menu(slug: str, db: Session = Depends(get_db)):
             currency=it.currency,
             category=it.category.name if it.category else None,
             subcategory=it.subcategory.name if it.subcategory else None,
-            imageUrl=it.image_url,
-            modelUrl=it.model_url,
+            imageUrl=normalize_url(it.image_url),
+            modelUrl=normalize_url(it.model_url),
             isAvailable=it.is_available
         ))
 
@@ -236,8 +246,8 @@ def update_item(
             "currency": item.currency,
             "category": item.category.name if item.category else None,
             "subcategory": item.subcategory.name if item.subcategory else None,
-            "imageUrl": item.image_url,
-            "modelUrl": item.model_url,
+            "imageUrl": normalize_url(item.image_url),
+            "modelUrl": normalize_url(item.model_url),
             "isAvailable": item.is_available,
         }
     }
