@@ -66,10 +66,10 @@ export default function AdminDashboard() {
   // -------------------------
   // QR Base (customer menu)
   // -------------------------
+  // ✅ For deployment (Vercel):
+  const QR_BASE = "https://menu-art01.vercel.app";
   // ✅ For local dev:
-  const QR_BASE = "http://localhost:5173";
-  // ✅ For deployment, change to your Vercel domain, example:
-  // const QR_BASE = "https://your-project.vercel.app";
+  // const QR_BASE = "http://localhost:5173";
 
   const customerUrl = useMemo(() => {
     if (!activeSlug) return "";
