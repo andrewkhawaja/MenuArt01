@@ -10,6 +10,7 @@ from app.core.deps import require_admin
 from app.models.menu import Restaurant, Category, Subcategory, MenuItem
 from app.schemas.menu import MenuResponse, MenuItemOut
 from app.core.config import MEDIA_DIR, BASE_URL
+from supabase import create_client
 
 router = APIRouter(prefix="/api", tags=["menu"])
 
@@ -36,6 +37,21 @@ def normalize_url(url: str | None) -> str | None:
     if url.startswith("http://127.0.0.1:8000"):
         return url.replace("http://127.0.0.1:8000", BASE_URL)
     return url
+
+
+def upload_to_supabase(rel_path: str, content: bytes, content_type: str) -> str | None:
+    supabase_url = os.getenv("SUPABASE_URL")
+    supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    bucket = os.getenv("SUPABASE_STORAGE_BUCKET")
+    if not (supabase_url and supabase_key and bucket):
+        return None
+    client = create_client(supabase_url, supabase_key)
+    client.storage.from_(bucket).upload(
+        rel_path,
+        content,
+        file_options={"content-type": content_type, "upsert": "true"},
+    )
+    return client.storage.from_(bucket).get_public_url(rel_path)
 
 
 def theme_for_restaurant(r: Restaurant) -> tuple[str, str, str]:
@@ -179,19 +195,25 @@ def create_item(
         ext = os.path.splitext(image.filename or "")[1] or ".jpg"
         fname = f"{uuid.uuid4().hex}{ext}"
         rel = os.path.join(slug, fname)
-        full = os.path.join(MEDIA_DIR, rel)
-        with open(full, "wb") as f:
-            f.write(image.file.read())
-        image_url = file_url(rel)
+        content = image.file.read()
+        image_url = upload_to_supabase(rel, content, image.content_type or "image/jpeg")
+        if not image_url:
+            full = os.path.join(MEDIA_DIR, rel)
+            with open(full, "wb") as f:
+                f.write(content)
+            image_url = file_url(rel)
 
     if model:
         ext = os.path.splitext(model.filename or "")[1] or ".glb"
         fname = f"{uuid.uuid4().hex}{ext}"
         rel = os.path.join(slug, fname)
-        full = os.path.join(MEDIA_DIR, rel)
-        with open(full, "wb") as f:
-            f.write(model.file.read())
-        model_url = file_url(rel)
+        content = model.file.read()
+        model_url = upload_to_supabase(rel, content, model.content_type or "model/gltf-binary")
+        if not model_url:
+            full = os.path.join(MEDIA_DIR, rel)
+            with open(full, "wb") as f:
+                f.write(content)
+            model_url = file_url(rel)
 
     item = MenuItem(
         restaurant_id=r.id,
