@@ -1,4 +1,6 @@
 import os, uuid
+import urllib.parse
+import urllib.request
 from typing import Optional
 
 from app.schemas.restaurants import RestaurantCreate, RestaurantThemeUpdate
@@ -10,7 +12,6 @@ from app.core.deps import require_admin
 from app.models.menu import Restaurant, Category, Subcategory, MenuItem
 from app.schemas.menu import MenuResponse, MenuItemOut
 from app.core.config import MEDIA_DIR, BASE_URL
-from supabase import create_client
 
 router = APIRouter(prefix="/api", tags=["menu"])
 
@@ -45,13 +46,21 @@ def upload_to_supabase(rel_path: str, content: bytes, content_type: str) -> str 
     bucket = os.getenv("SUPABASE_STORAGE_BUCKET")
     if not (supabase_url and supabase_key and bucket):
         return None
-    client = create_client(supabase_url, supabase_key)
-    client.storage.from_(bucket).upload(
-        rel_path,
-        content,
-        file_options={"content-type": content_type, "upsert": "true"},
+    safe_path = "/".join(
+        urllib.parse.quote(p) for p in rel_path.replace("\\", "/").split("/")
     )
-    return client.storage.from_(bucket).get_public_url(rel_path)
+    base = supabase_url.rstrip("/")
+    object_url = f"{base}/storage/v1/object/{bucket}/{safe_path}"
+    req = urllib.request.Request(object_url, data=content, method="POST")
+    req.add_header("Authorization", f"Bearer {supabase_key}")
+    req.add_header("apikey", supabase_key)
+    req.add_header("Content-Type", content_type)
+    req.add_header("x-upsert", "true")
+    try:
+        urllib.request.urlopen(req)
+    except Exception:
+        return None
+    return f"{base}/storage/v1/object/public/{bucket}/{safe_path}"
 
 
 def theme_for_restaurant(r: Restaurant) -> tuple[str, str, str]:
