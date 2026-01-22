@@ -96,6 +96,18 @@ export default function Menu() {
           if (apiTheme) {
             setTheme(apiTheme);
             saveThemeForSlug(slug, apiTheme);
+          } else {
+            const themeRes = await fetch(
+              `${API_BASE}/restaurants/${safeSlug}/theme`
+            );
+            if (themeRes.ok) {
+              const themeData = await themeRes.json();
+              const themeFromServer = themeFromApi(themeData);
+              if (themeFromServer) {
+                setTheme(themeFromServer);
+                saveThemeForSlug(slug, themeFromServer);
+              }
+            }
           }
         }
       } catch {

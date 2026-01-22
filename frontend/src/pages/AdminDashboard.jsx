@@ -7,6 +7,7 @@ import {
   createRestaurant,
   deleteMenuItem,
   getMenu,
+  getRestaurantTheme,
   updateMenuItem,
   updateRestaurantTheme,
 } from "../api/adminApi";
@@ -109,6 +110,14 @@ export default function AdminDashboard() {
       if (apiTheme) {
         setTheme(apiTheme);
         saveThemeForSlug(slug, apiTheme);
+      }
+      if (!apiTheme) {
+        const themeData = await getRestaurantTheme(slug);
+        const themeFromServer = themeFromApi(themeData);
+        if (themeFromServer) {
+          setTheme(themeFromServer);
+          saveThemeForSlug(slug, themeFromServer);
+        }
       }
     } catch {
       setItems([]);

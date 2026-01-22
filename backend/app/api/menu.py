@@ -138,6 +138,17 @@ def get_menu(slug: str, db: Session = Depends(get_db)):
     )
 
 
+@router.get("/restaurants/{slug}/theme")
+def get_theme(slug: str, db: Session = Depends(get_db)):
+    r = get_restaurant_or_404(slug, db)
+    theme_name, theme_primary, theme_secondary = theme_for_restaurant(r)
+    return {
+        "themeName": theme_name,
+        "themePrimary": theme_primary,
+        "themeSecondary": theme_secondary,
+    }
+
+
 @router.put("/restaurants/{slug}/theme")
 def update_theme(
     slug: str,

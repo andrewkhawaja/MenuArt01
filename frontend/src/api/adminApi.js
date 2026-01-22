@@ -50,6 +50,15 @@ export async function getMenu(slug) {
   return res.json();
 }
 
+export async function getRestaurantTheme(slug) {
+  const res = await fetch(`${API_BASE}/restaurants/${slug}/theme`);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Failed to fetch theme");
+  }
+  return res.json();
+}
+
 export async function updateRestaurantTheme(slug, theme) {
   const res = await fetch(`${API_BASE}/restaurants/${slug}/theme`, {
     method: "PUT",
