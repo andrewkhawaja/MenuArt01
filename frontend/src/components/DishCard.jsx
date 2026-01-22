@@ -158,26 +158,28 @@ const styles = {
     borderRadius: 16,
   },
   imgWrap: {
-    height: 200,
+    width: "100%",
+    aspectRatio: "4 / 3",
     background: "rgba(0,0,0,0.3)",
     overflow: "hidden",
     position: "relative",
   },
   imgWrapList: {
     width: 140,
-    height: "100%",
+    aspectRatio: "1 / 1",
     flexShrink: 0,
   },
   imgWrapListCompact: {
     width: 120,
   },
   imgWrapCompact: {
-    height: 140,
+    aspectRatio: "4 / 3",
   },
   img: {
     width: "100%",
     height: "100%",
     objectFit: "cover",
+    objectPosition: "center",
     display: "block",
     transition: "transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
   },
